@@ -2,7 +2,9 @@ name: Earthquake Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    # 5分おき。健一の実体験(北海道胆振東部地震ブラックアウト、携帯基地局は停電後
+    # 約30分で電波途絶)を踏まえ、その猶予内に確実に検知・公開できる頻度にしている。
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 permissions:
