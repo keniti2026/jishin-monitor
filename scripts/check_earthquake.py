@@ -186,7 +186,7 @@ def main() -> None:
         title, body = build_article(name, magnitude, scale_label, occurred_at)
         status, resp_body = hatena_post(
             api_key, title, body,
-            categories=["防災", "地震", "地震自動速報", name],
+            categories=["saigai", "災害", "防災", "地震", "地震自動速報", name],
         )
         print(f"hatena post status: {status}")
         if status != 201:
