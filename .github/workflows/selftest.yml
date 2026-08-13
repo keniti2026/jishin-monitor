@@ -16,7 +16,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write  # 下の keepalive コミットに必要
 
 concurrency:
   group: earthquake-selftest
@@ -37,3 +37,27 @@ jobs:
           HATENA_API_KEY: ${{ secrets.HATENA_API_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python scripts/selftest.py
+
+      # 🚨🚨 これが無いと監視そのものが60日で止まる(2026-08-14追加、最重要)
+      # GitHubの仕様: **Publicリポジトリでは60日間リポジトリの活動(push等)が無いと
+      # scheduled workflow が自動的に無効化される**。ワークフローの実行自体は「活動」に
+      # 数えられない。このリポジトリは震度6弱以上の地震が起きたときしか state.json を
+      # commit しないので、**地震が来ない平穏な2ヶ月で監視が静かに死ぬ**。
+      # そこで毎週このステップが heartbeat.txt を更新して push し、活動を発生させ続ける。
+      # (これでも止まった場合に備え、瑞樹側の月次タスク jishin-monitor-monthly-check が
+      #  毎月1日に無効化を検知して再有効化する。二重の保険。)
+      - name: Keepalive commit (prevents 60-day auto-disable of scheduled workflows)
+        if: always()
+        run: |
+          git config user.name "earthquake-monitor-bot"
+          git config user.email "actions@users.noreply.github.com"
+          date -u '+%Y-%m-%dT%H:%M:%SZ last publish-path self-test' > heartbeat.txt
+          git add heartbeat.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "keepalive: publish-path self-test heartbeat"
+            # monitor.yml の state.json コミットと衝突しうるので rebase してから push
+            git pull --rebase --quiet origin main || true
+            git push origin HEAD:main
+          else
+            echo "heartbeat unchanged"
+          fi
