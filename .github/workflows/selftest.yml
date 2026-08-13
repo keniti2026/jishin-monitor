@@ -1,0 +1,39 @@
+name: Publish Path Self-Test
+
+# 🚨 なぜ定期実行するか(2026-08-14 健一さん指示「正確に、正常に、間違いなく公開する」):
+# 地震は滅多に起きないので、この仕組みは何ヶ月も本番投稿しないまま待機する。その間に
+# はてなのAPIキーが失効しても、P2P APIのポーリングは成功し続けるので monitor.yml は
+# 緑のまま。次の大地震が来た瞬間に初めて「投稿できない」と分かるのでは遅い。
+# このワークフローが、実際の地震を待たずに投稿経路の全体(認証→投稿→検証→削除)を
+# 毎週確かめ、壊れていれば ntfy で知らせる。
+#
+# 公開記事は一切作らない: 必ず下書き(app:draft=yes)として投稿し、検証後に削除する。
+
+on:
+  schedule:
+    # 毎週月曜 21:10 UTC = 火曜 6:10 JST。健一さんが起きている時間に結果が出るようにする。
+    - cron: '10 21 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: earthquake-selftest
+  cancel-in-progress: false
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify we can actually publish an earthquake article
+        env:
+          HATENA_API_KEY: ${{ secrets.HATENA_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python scripts/selftest.py
