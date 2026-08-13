@@ -30,7 +30,11 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python scripts/check_earthquake.py
 
+      # 🚨 if: always() は必須。check_earthquake.py は「記事を投稿できなかった地震が残っている」とき
+      # exit 1 で終わる(Actions上で赤く見せて気づけるようにするため)。always() が無いとこの
+      # ステップがスキップされ、state.json が保存されずに ntfy 通知が5分おきに重複発火する。
       - name: Commit state if changed
+        if: always()
         run: |
           git config user.name "earthquake-monitor-bot"
           git config user.email "actions@users.noreply.github.com"
